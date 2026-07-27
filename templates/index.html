@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Мини-приложение</title>
-    <!-- Подключаем Telegram Web App JS -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         * {
@@ -116,7 +115,6 @@
             color: #555;
             font-size: 12px;
         }
-        /* Адаптация под темную тему Telegram */
         @media (prefers-color-scheme: light) {
             body {
                 background: #f5f5f5;
@@ -153,19 +151,19 @@
             <h3>📊 Статистика</h3>
             <div class="info-row">
                 <span class="info-label">Всего задач</span>
-                <span class="info-value" id="totalTasks">5</span>
+                <span class="info-value" id="totalTasks">—</span>
             </div>
             <div class="info-row">
                 <span class="info-label">Выполнено</span>
-                <span class="info-value" id="completedTasks">2</span>
+                <span class="info-value" id="completedTasks">—</span>
             </div>
             <div class="info-row">
                 <span class="info-label">Просрочено</span>
-                <span class="info-value" id="overdueTasks" style="color:#ff6b6b;">1</span>
+                <span class="info-value" id="overdueTasks" style="color:#ff6b6b;">—</span>
             </div>
             <div class="info-row">
                 <span class="info-label">Активных</span>
-                <span class="info-value" id="activeTasks" style="color:#6c5ce7;">2</span>
+                <span class="info-value" id="activeTasks" style="color:#6c5ce7;">—</span>
             </div>
         </div>
 
@@ -184,43 +182,60 @@
     </div>
 
     <script>
-        // Инициализация Telegram Web App
         const tg = window.Telegram.WebApp;
-        tg.expand(); // Растягиваем на весь экран
+        tg.expand();
         
-        // Получаем данные пользователя
         const user = tg.initDataUnsafe?.user;
-        if (user) {
-            console.log('Пользователь:', user);
+        
+        async function loadStats() {
+            if (!user) {
+                document.getElementById('totalTasks').textContent = '❌';
+                document.getElementById('completedTasks').textContent = '❌';
+                document.getElementById('overdueTasks').textContent = '❌';
+                document.getElementById('activeTasks').textContent = '❌';
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/stats/${user.id}`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    console.error('Ошибка:', data.error);
+                    return;
+                }
+                
+                document.getElementById('totalTasks').textContent = data.total;
+                document.getElementById('completedTasks').textContent = data.completed;
+                document.getElementById('overdueTasks').textContent = data.overdue;
+                document.getElementById('activeTasks').textContent = data.active;
+            } catch (error) {
+                console.error('Ошибка загрузки:', error);
+            }
         }
-
-        // Функция отправки данных в бот
+        
+        loadStats();
+        
         function sendData() {
             const data = {
                 action: 'get_tasks',
                 user_id: user?.id || null,
                 timestamp: new Date().toISOString()
             };
-            
             tg.sendData(JSON.stringify(data));
-            
-            // Показываем уведомление
             tg.showAlert('📤 Данные отправлены!');
         }
-
-        // Функция закрытия приложения
+        
         function closeApp() {
             tg.close();
         }
-
-        // Показываем приветствие при открытии
+        
         tg.showPopup({
             title: '👋 Добро пожаловать!',
             message: 'Здесь будет список ваших поручений\n\nДанные обновляются в реальном времени',
             buttons: [{ type: 'ok' }]
         });
-
-        // Обработка данных, которые приходят из бота
+        
         tg.onEvent('mainButtonClicked', function() {
             console.log('Кнопка нажата');
         });
